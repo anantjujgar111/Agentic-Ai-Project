@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from app.data_loader import load_mock_data
@@ -26,7 +26,7 @@ class BankingToolService:
             "account_type": account["account_type"],
             "available_balance": account["available_balance"],
             "currency": account["currency"],
-            "as_of": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            "as_of": datetime.now(UTC).isoformat(timespec="seconds"),
         }
 
     def get_statement_summary(self, user_id: str) -> dict[str, Any]:
