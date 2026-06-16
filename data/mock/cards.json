@@ -1,0 +1,12 @@
+[
+  {
+    "card_id": "card_001",
+    "customer_id": "cust_001",
+    "card_type": "Debit Platinum",
+    "masked_number": "XXXX-XXXX-XXXX-9090",
+    "status": "active",
+    "daily_limit": 100000,
+    "international_enabled": false,
+    "contactless_enabled": true
+  }
+]

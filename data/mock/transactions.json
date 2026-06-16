@@ -1,0 +1,62 @@
+[
+  {
+    "transaction_id": "txn_1001",
+    "customer_id": "cust_001",
+    "date": "2026-06-01",
+    "merchant": "Salary Credit",
+    "category": "Income",
+    "type": "credit",
+    "amount": 85000,
+    "narration": "NEFT salary credit from employer"
+  },
+  {
+    "transaction_id": "txn_1002",
+    "customer_id": "cust_001",
+    "date": "2026-06-03",
+    "merchant": "Mumbai Electric Supply",
+    "category": "Utilities",
+    "type": "debit",
+    "amount": 2340,
+    "narration": "UPI bill payment"
+  },
+  {
+    "transaction_id": "txn_1003",
+    "customer_id": "cust_001",
+    "date": "2026-06-05",
+    "merchant": "Home Loan EMI",
+    "category": "Loan EMI",
+    "type": "debit",
+    "amount": 28500,
+    "narration": "Auto debit home loan EMI"
+  },
+  {
+    "transaction_id": "txn_1004",
+    "customer_id": "cust_001",
+    "date": "2026-06-08",
+    "merchant": "Fresh Basket",
+    "category": "Groceries",
+    "type": "debit",
+    "amount": 4250,
+    "narration": "Debit card purchase"
+  },
+  {
+    "transaction_id": "txn_1005",
+    "customer_id": "cust_001",
+    "date": "2026-06-10",
+    "merchant": "Card Annual Fee",
+    "category": "Bank Charges",
+    "type": "debit",
+    "amount": 499,
+    "narration": "Debit card annual maintenance fee"
+  },
+  {
+    "transaction_id": "txn_2001",
+    "customer_id": "cust_002",
+    "date": "2026-06-01",
+    "merchant": "Salary Credit",
+    "category": "Income",
+    "type": "credit",
+    "amount": 145000,
+    "narration": "NEFT salary credit from employer"
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "slot_id": "slot_101_a",
+    "rm_id": "rm_101",
+    "rm_name": "Priya Sharma",
+    "starts_at": "2026-06-18T10:00:00+05:30",
+    "mode": "video",
+    "status": "available"
+  },
+  {
+    "slot_id": "slot_101_b",
+    "rm_id": "rm_101",
+    "rm_name": "Priya Sharma",
+    "starts_at": "2026-06-18T15:00:00+05:30",
+    "mode": "branch",
+    "status": "available"
+  },
+  {
+    "slot_id": "slot_102_a",
+    "rm_id": "rm_102",
+    "rm_name": "Karan Malhotra",
+    "starts_at": "2026-06-19T11:30:00+05:30",
+    "mode": "phone",
+    "status": "available"
+  }
+]

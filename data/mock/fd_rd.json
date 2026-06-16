@@ -1,0 +1,20 @@
+[
+  {
+    "deposit_id": "fd_001",
+    "customer_id": "cust_001",
+    "type": "FD",
+    "principal": 100000,
+    "tenure_months": 12,
+    "interest_rate": 6.9,
+    "maturity_date": "2027-04-15"
+  },
+  {
+    "deposit_id": "rd_001",
+    "customer_id": "cust_001",
+    "type": "RD",
+    "monthly_amount": 5000,
+    "tenure_months": 24,
+    "interest_rate": 6.7,
+    "maturity_date": "2028-01-10"
+  }
+]
