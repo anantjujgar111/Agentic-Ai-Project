@@ -35,7 +35,7 @@ body {
   border-radius: 28px;
   box-shadow: 0 24px 80px rgba(8, 44, 95, 0.18);
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
   overflow: hidden;
 }
 
@@ -71,26 +71,10 @@ h1 {
   white-space: nowrap;
 }
 
-.quick-actions {
-  display: flex;
-  gap: 10px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-  overflow-x: auto;
-}
-
-.quick-actions button,
 .chat-form button {
   border: 0;
   cursor: pointer;
   font-weight: 700;
-}
-
-.quick-actions button {
-  background: #eef6ff;
-  color: var(--blue-dark);
-  border-radius: 999px;
-  padding: 10px 14px;
 }
 
 .messages {

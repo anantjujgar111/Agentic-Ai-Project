@@ -31,3 +31,19 @@ def test_rm_query_books_appointment():
 
     assert result.agent == "RM Appointment Agent"
     assert any(trace.name == "book_rm_appointment" for trace in result.traces)
+
+
+def test_greeting_gets_conversational_response():
+    result = BankingOrchestrator().handle("hi", "cust_001")
+
+    assert result.agent == "Orchestrator Agent"
+    assert "Smart Banking Assistant" in result.response
+    assert "knowledge" not in result.response.lower()
+
+
+def test_unclear_query_uses_helpful_banking_fallback():
+    result = BankingOrchestrator().handle("can you help me with something", "cust_001")
+
+    assert result.agent == "Orchestrator Agent"
+    assert "right banking agent" in result.response
+    assert "knowledge" not in result.response.lower()

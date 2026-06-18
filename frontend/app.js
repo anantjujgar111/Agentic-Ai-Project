@@ -23,7 +23,7 @@ function addMessage(role, text, agent) {
 
 async function sendMessage(message) {
   addMessage("user", message);
-  addMessage("bot", "Thinking through the right banking agent...");
+  addMessage("bot", "Let me check that for you...");
   const pending = messagesEl.lastElementChild;
 
   try {
@@ -57,15 +57,8 @@ form.addEventListener("submit", (event) => {
   sendMessage(message);
 });
 
-document.querySelectorAll("[data-prompt]").forEach((button) => {
-  button.addEventListener("click", () => {
-    input.value = button.dataset.prompt;
-    input.focus();
-  });
-});
-
 addMessage(
   "bot",
-  "Hi Aarav, I am your Smart Banking Assistant. I can answer bank information questions, summarize your mock account, schedule mock payments, create savings goals, and book RM appointments.",
+  "Hi Aarav, I am your Smart Banking Assistant. You can type naturally, and I will handle the right banking flow in the background.",
   "Orchestrator Agent"
 );

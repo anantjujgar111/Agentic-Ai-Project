@@ -17,6 +17,8 @@ class BankingOrchestrator:
     def handle(self, message: str, user_id: str) -> AgentResponse:
         intent = self._classify(message)
 
+        if intent == "small_talk":
+            return self._small_talk(message, user_id)
         if intent == "customer_service":
             return self._customer_service(message, user_id)
         if intent == "payments":
@@ -32,6 +34,27 @@ class BankingOrchestrator:
 
     def _classify(self, message: str) -> str:
         text = message.lower()
+        normalized = re.sub(r"[^a-z0-9\s]", "", text).strip()
+        if normalized in {
+            "hi",
+            "hello",
+            "hey",
+            "hii",
+            "good morning",
+            "good afternoon",
+            "good evening",
+            "thanks",
+            "thank you",
+        } or any(
+            phrase in normalized
+            for phrase in [
+                "who are you",
+                "what can you do",
+                "how can you help",
+                "help me",
+            ]
+        ):
+            return "small_talk"
         if any(term in text for term in ["rm", "relationship manager", "appointment", "meeting"]):
             return "rm_appointment"
         if any(term in text for term in ["goal", "save", "saving", "vacation", "wedding", "education", "retirement", "emergency fund", "down payment"]):
@@ -54,7 +77,7 @@ class BankingOrchestrator:
         hits = search_result.get("hits", [])
         if hits:
             answer_lines = [
-                "I found this in the banking knowledge base:",
+                "Here is what I found:",
                 "",
                 *[
                     f"- {hit['title']}: {hit['snippet']} (source: {hit['source']})"
@@ -63,16 +86,15 @@ class BankingOrchestrator:
             ]
         else:
             answer_lines = [
-                "I could not find an exact knowledge-base match yet.",
-                "For the POC, add this topic as a markdown file under data/knowledge_base and re-index it in GCP.",
+                "I can help with account questions, payments, card controls, savings goals, and RM appointments.",
+                "Please tell me what you want to do in simple language, for example: check balance, explain a charge, pay a bill, create a goal, or book an RM appointment.",
             ]
         draft = "\n".join(answer_lines)
         return AgentResponse(
-            response=self.vertex.polish("Answer customer service questions from KB only.", draft),
+            response=self.vertex.polish("Answer customer service questions politely and stay within banking scope.", draft),
             agent="Customer Service Information Agent",
             user_id=user_id,
             traces=traces,
-            next_steps=["Add more bank policy documents to the knowledge base."],
         )
 
     def _payments(self, message: str, user_id: str) -> AgentResponse:
@@ -286,11 +308,28 @@ class BankingOrchestrator:
             traces=traces,
         )
 
+    def _small_talk(self, message: str, user_id: str) -> AgentResponse:
+        text = message.lower()
+        if "thank" in text or "thanks" in text:
+            draft = "You're welcome. Tell me whenever you want help with your account, payments, goals, cards, or RM appointment."
+        else:
+            draft = (
+                "Hi, I am your Smart Banking Assistant. Tell me what you want to do, "
+                "and I will choose the right banking agent and tools in the background. "
+                "You can ask things like checking balance, explaining a charge, paying a bill, "
+                "planning a savings goal, or booking an RM appointment."
+            )
+        return AgentResponse(
+            response=self.vertex.polish("Handle simple greetings and capability questions.", draft),
+            agent="Orchestrator Agent",
+            user_id=user_id,
+        )
+
     def _fallback(self, message: str, user_id: str) -> AgentResponse:
         draft = (
-            "I can help with customer service information, smart payments, account services, "
-            "financial goals, and RM appointment booking. Try: 'show my balance' or "
-            "'book RM appointment'."
+            "I can help with banking tasks such as account questions, bill payments, "
+            "card controls, savings goals, and RM appointments. Please describe what "
+            "you need, and I will route it to the right agent."
         )
         return AgentResponse(response=draft, agent="Orchestrator Agent", user_id=user_id)
 
