@@ -101,6 +101,36 @@ export USE_VERTEX=false
 bash scripts/deploy_backend_cloud_run.sh "$GCP_PROJECT_ID"
 ```
 
+If `gcloud run deploy --source .` fails on source upload, image push, or build log access, grant the Cloud Run build service account the missing roles:
+
+```bash
+PROJECT_NUMBER="$(gcloud projects describe "$GCP_PROJECT_ID" --format="value(projectNumber)")"
+
+gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/storage.objectViewer"
+
+gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/artifactregistry.writer"
+
+gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/logging.logWriter"
+```
+
+For your own account to view build details in the console:
+
+```bash
+gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
+  --member="user:YOUR_EMAIL" \
+  --role="roles/cloudbuild.viewer"
+
+gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
+  --member="user:YOUR_EMAIL" \
+  --role="roles/logging.viewer"
+```
+
 After Cloud Run works, enable Gemini:
 
 ```bash

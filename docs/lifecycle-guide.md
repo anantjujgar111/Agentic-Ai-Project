@@ -178,6 +178,8 @@ export USE_VERTEX=true
 export VERTEX_MODEL=gemini-1.5-flash
 ```
 
+During the first deployment, Cloud Run source deploy may need IAM roles for the build service account. If source upload, Artifact Registry push, or Cloud Build logs fail, use the troubleshooting block in `docs/gcp-setup.md`.
+
 Cloud Run prints a service URL like:
 
 ```text
