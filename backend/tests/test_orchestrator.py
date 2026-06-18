@@ -53,9 +53,32 @@ def test_phone_number_change_gets_safe_profile_guidance():
     result = BankingOrchestrator().handle("i have to change my phone no", "cust_001")
 
     assert result.agent == "Customer Service Information Agent"
-    assert "cannot change your phone number" in result.response
+    assert "date of birth" in result.response
     assert "savings" not in result.response.lower()
     assert ".md" not in result.response
+
+
+def test_profile_update_succeeds_after_dob_verification():
+    orchestrator = BankingOrchestrator()
+    first = orchestrator.handle("change my phone number to 9876543210", "cust_001")
+    second = orchestrator.handle("15-04-1990", "cust_001")
+
+    assert "date of birth" in first.response
+    assert second.agent == "Customer Service Information Agent"
+    assert "DOB verified" in second.response
+    assert "9876543210" not in second.response
+    assert any(trace.name == "verify_dob" and trace.output["verified"] for trace in second.traces)
+    assert any(trace.name == "create_profile_update_request" for trace in second.traces)
+
+
+def test_profile_update_rejects_wrong_dob():
+    result = BankingOrchestrator().handle(
+        "change my phone number to 9876543210 dob 01-01-1999", "cust_001"
+    )
+
+    assert result.agent == "Customer Service Information Agent"
+    assert "verification failed" in result.response.lower()
+    assert not any(trace.name == "create_profile_update_request" for trace in result.traces)
 
 
 def test_customer_service_answer_does_not_expose_source_paths():

@@ -165,9 +165,8 @@ firebase deploy --only hosting
 
 No payment gateway, SMS, WhatsApp, email, or real banking API is needed for this POC cycle.
 
-If you later want OTP, reminders, or notifications, ask before adding:
+If you later want reminders or notifications, ask before adding:
 
-- Twilio or GCP Identity Platform for OTP
 - Cloud Scheduler + Pub/Sub for reminders
 - SendGrid or Gmail API for email
 

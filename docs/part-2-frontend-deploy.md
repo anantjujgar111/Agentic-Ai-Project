@@ -173,12 +173,22 @@ frontend/
 Try these:
 
 ```text
+Hi
 Show my balance
 Schedule my electricity bill
 Create wedding goal for 5 lakh in 18 months
 Book RM appointment
 What is debit card annual fee?
+I have to change my phone no
 ```
+
+For the mock profile-update flow, the assistant asks for DOB verification. Use this synthetic DOB for `cust_001`:
+
+```text
+15-04-1990
+```
+
+This creates a mock profile update request only after DOB verification succeeds. DOB-only verification is used here only for the POC; a real bank should combine multiple security and risk controls.
 
 ## 11. What Part 2 completes
 

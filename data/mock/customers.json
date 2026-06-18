@@ -2,6 +2,7 @@
   {
     "customer_id": "cust_001",
     "name": "Aarav Mehta",
+    "date_of_birth": "1990-04-15",
     "segment": "Classic",
     "city": "Mumbai",
     "monthly_income": 85000,
@@ -11,6 +12,7 @@
   {
     "customer_id": "cust_002",
     "name": "Neha Rao",
+    "date_of_birth": "1988-11-23",
     "segment": "Preferred",
     "city": "Bengaluru",
     "monthly_income": 145000,

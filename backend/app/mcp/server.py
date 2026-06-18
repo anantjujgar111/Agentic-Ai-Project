@@ -33,6 +33,22 @@ def build_mcp_server():
         return tool_service.get_balance(user_id)
 
     @mcp.tool()
+    def verify_dob(user_id: str, dob: str) -> dict:
+        return tool_service.verify_dob(user_id=user_id, dob=dob)
+
+    @mcp.tool()
+    def create_profile_update_request(
+        user_id: str,
+        update_type: str,
+        new_value: str | None = None,
+    ) -> dict:
+        return tool_service.create_profile_update_request(
+            user_id=user_id,
+            update_type=update_type,
+            new_value=new_value,
+        )
+
+    @mcp.tool()
     def get_statement_summary(user_id: str) -> dict:
         return tool_service.get_statement_summary(user_id)
 

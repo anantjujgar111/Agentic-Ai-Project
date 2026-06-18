@@ -14,6 +14,7 @@ class BankingToolService:
         self.data = load_mock_data()
         self.scheduled_payments: list[dict[str, Any]] = []
         self.appointments: list[dict[str, Any]] = []
+        self.profile_update_requests: list[dict[str, Any]] = []
 
     def get_customer(self, user_id: str) -> dict[str, Any]:
         return self._find_one("customers", "customer_id", user_id)
@@ -28,6 +29,35 @@ class BankingToolService:
             "currency": account["currency"],
             "as_of": datetime.now(UTC).isoformat(timespec="seconds"),
         }
+
+    def verify_dob(self, user_id: str, dob: str) -> dict[str, Any]:
+        customer = self.get_customer(user_id)
+        normalized_dob = self._normalize_dob(dob)
+        verified = normalized_dob == customer["date_of_birth"]
+        return {
+            "customer_id": user_id,
+            "verification_method": "dob",
+            "verified": verified,
+            "status": "verified" if verified else "failed",
+        }
+
+    def create_profile_update_request(
+        self,
+        user_id: str,
+        update_type: str,
+        new_value: str | None = None,
+    ) -> dict[str, Any]:
+        request = {
+            "request_id": f"profile_{len(self.profile_update_requests) + 1:03d}",
+            "customer_id": user_id,
+            "update_type": update_type,
+            "new_value_masked": self._mask_profile_value(update_type, new_value),
+            "status": "created_mock",
+            "verification_method": "dob",
+            "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        }
+        self.profile_update_requests.append(request)
+        return request
 
     def get_statement_summary(self, user_id: str) -> dict[str, Any]:
         transactions = self._filter("transactions", "customer_id", user_id)
@@ -212,6 +242,29 @@ class BankingToolService:
 
     def _filter(self, collection: str, field: str, value: str) -> list[dict[str, Any]]:
         return [item for item in self.data[collection] if item[field] == value]
+
+    @staticmethod
+    def _normalize_dob(dob: str) -> str | None:
+        cleaned = dob.strip()
+        for date_format in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d"):
+            try:
+                return datetime.strptime(cleaned, date_format).date().isoformat()
+            except ValueError:
+                continue
+        return None
+
+    @staticmethod
+    def _mask_profile_value(update_type: str, new_value: str | None) -> str | None:
+        if not new_value:
+            return None
+        if update_type in {"phone", "mobile"}:
+            digits = "".join(ch for ch in new_value if ch.isdigit())
+            return f"XXXXXX{digits[-4:]}" if len(digits) >= 4 else "XXXX"
+        if update_type == "email" and "@" in new_value:
+            prefix, domain = new_value.split("@", 1)
+            visible = prefix[:2] if len(prefix) > 2 else prefix[:1]
+            return f"{visible}***@{domain}"
+        return "provided"
 
 
 tool_service = BankingToolService()

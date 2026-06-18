@@ -13,10 +13,14 @@ class BankingOrchestrator:
     def __init__(self) -> None:
         self.knowledge = KnowledgeService()
         self.vertex = VertexTextClient()
+        self.pending_verifications: dict[str, dict[str, str | None]] = {}
 
     def handle(self, message: str, user_id: str) -> AgentResponse:
         if self._is_unsafe_request(message):
             return self._safety_response(user_id)
+
+        if user_id in self.pending_verifications and self._extract_dob(message):
+            return self._complete_pending_verification(message, user_id)
 
         intent = self._classify(message)
 
@@ -107,17 +111,107 @@ class BankingOrchestrator:
         )
 
     def _profile_update_help(self, message: str, user_id: str) -> AgentResponse:
+        update_type = self._extract_profile_update_type(message)
+        new_value = self._extract_profile_update_value(message, update_type)
+        dob = self._extract_dob(message)
+
+        if dob:
+            return self._verify_and_create_profile_update(
+                user_id=user_id,
+                dob=dob,
+                update_type=update_type,
+                new_value=new_value,
+            )
+
+        self.pending_verifications[user_id] = {
+            "action": "profile_update",
+            "update_type": update_type,
+            "new_value": new_value,
+        }
         draft = (
-            "I can help you start a contact-details update request. For security, I cannot "
-            "change your phone number, email, address, or KYC details directly in chat. "
-            "Please use verified mobile banking/net banking or visit a branch with valid ID. "
-            "In a production flow, I would trigger a secure profile-update tool with OTP or "
-            "branch verification before any change is submitted."
+            f"I can start a mock {update_type} update request. For this POC, please "
+            "verify with your date of birth in DD-MM-YYYY or YYYY-MM-DD format. "
+            "I will not display the DOB back in the chat. Note: DOB-only verification "
+            "is for this demo; a real bank should use stronger authentication and risk checks."
         )
         return AgentResponse(
-            response=self.vertex.polish("Guide profile update requests safely without changing data.", draft),
+            response=self.vertex.polish("Ask for DOB verification before profile update in a POC.", draft),
             agent="Customer Service Information Agent",
             user_id=user_id,
+        )
+
+    def _complete_pending_verification(self, message: str, user_id: str) -> AgentResponse:
+        pending = self.pending_verifications.get(user_id, {})
+        dob = self._extract_dob(message)
+        if not dob:
+            return self._fallback(message, user_id)
+
+        if pending.get("action") == "profile_update":
+            result = self._verify_and_create_profile_update(
+                user_id=user_id,
+                dob=dob,
+                update_type=str(pending.get("update_type") or "profile"),
+                new_value=pending.get("new_value"),
+            )
+            if any(trace.name == "verify_dob" and trace.output.get("verified") for trace in result.traces):
+                self.pending_verifications.pop(user_id, None)
+            return result
+
+        self.pending_verifications.pop(user_id, None)
+        return self._fallback(message, user_id)
+
+    def _verify_and_create_profile_update(
+        self,
+        user_id: str,
+        dob: str,
+        update_type: str,
+        new_value: str | None,
+    ) -> AgentResponse:
+        traces: list[ToolTrace] = []
+        verification = tool_service.verify_dob(user_id=user_id, dob=dob)
+        traces.append(
+            ToolTrace(
+                "verify_dob",
+                {"user_id": user_id, "dob_provided": True},
+                verification,
+            )
+        )
+
+        if not verification["verified"]:
+            draft = (
+                "DOB verification failed, so I cannot create the profile update request. "
+                "Please check the date and try again, or use verified mobile/net banking."
+            )
+            return AgentResponse(
+                response=self.vertex.polish("Explain failed DOB verification safely.", draft),
+                agent="Customer Service Information Agent",
+                user_id=user_id,
+                traces=traces,
+            )
+
+        request = tool_service.create_profile_update_request(
+            user_id=user_id,
+            update_type=update_type,
+            new_value=new_value,
+        )
+        traces.append(
+            ToolTrace(
+                "create_profile_update_request",
+                {"user_id": user_id, "update_type": update_type, "new_value_provided": bool(new_value)},
+                request,
+            )
+        )
+        draft = (
+            f"DOB verified. I created a mock {update_type} update request "
+            f"{request['request_id']}. "
+            "This POC does not change real bank records. In a real bank, the request "
+            "would go through stronger authentication, audit logging, and back-office validation."
+        )
+        return AgentResponse(
+            response=self.vertex.polish("Confirm DOB-verified mock profile update request.", draft),
+            agent="Customer Service Information Agent",
+            user_id=user_id,
+            traces=traces,
         )
 
     def _payments(self, message: str, user_id: str) -> AgentResponse:
@@ -203,7 +297,7 @@ class BankingOrchestrator:
             agent="Smart Payments Agent",
             user_id=user_id,
             traces=traces,
-            next_steps=["For real banking, add OTP/2FA and maker-checker confirmation."],
+            next_steps=["For real banking, add stronger authentication, risk checks, and maker-checker confirmation."],
         )
 
     def _account_service(self, message: str, user_id: str) -> AgentResponse:
@@ -382,6 +476,37 @@ class BankingOrchestrator:
         return any(term in text for term in ["change", "update", "edit", "replace"]) and any(
             item in text for item in ["phone", "mobile", "email", "address", "profile", "kyc"]
         )
+
+    @staticmethod
+    def _extract_profile_update_type(message: str) -> str:
+        text = message.lower()
+        if "phone" in text or "mobile" in text:
+            return "phone"
+        if "email" in text:
+            return "email"
+        if "address" in text:
+            return "address"
+        if "kyc" in text:
+            return "kyc"
+        return "profile"
+
+    @staticmethod
+    def _extract_profile_update_value(message: str, update_type: str) -> str | None:
+        if update_type == "phone":
+            match = re.search(r"(?:\+?\d[\d\s-]{7,}\d)", message)
+            return match.group(0).strip() if match else None
+        if update_type == "email":
+            match = re.search(r"[\w.+-]+@[\w-]+\.[\w.-]+", message)
+            return match.group(0).strip() if match else None
+        return None
+
+    @staticmethod
+    def _extract_dob(message: str) -> str | None:
+        match = re.search(
+            r"\b(?:\d{4}[-/]\d{2}[-/]\d{2}|\d{2}[-/]\d{2}[-/]\d{4})\b",
+            message,
+        )
+        return match.group(0) if match else None
 
     @staticmethod
     def _is_unsafe_request(message: str) -> bool:
