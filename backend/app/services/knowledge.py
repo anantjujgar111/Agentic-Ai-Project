@@ -18,6 +18,37 @@ class KnowledgeHit:
 class LocalKnowledgeBase:
     """Small local retrieval layer for the POC before Vertex AI Search is enabled."""
 
+    STOPWORDS = {
+        "about",
+        "after",
+        "also",
+        "and",
+        "are",
+        "can",
+        "change",
+        "could",
+        "for",
+        "from",
+        "have",
+        "help",
+        "how",
+        "into",
+        "may",
+        "need",
+        "please",
+        "should",
+        "that",
+        "the",
+        "this",
+        "want",
+        "what",
+        "when",
+        "where",
+        "with",
+        "you",
+        "your",
+    }
+
     def __init__(self, root: Path = KNOWLEDGE_ROOT) -> None:
         self.root = root
         self.documents = self._load_documents()
@@ -48,7 +79,7 @@ class LocalKnowledgeBase:
         return {
             token
             for token in re.findall(r"[a-zA-Z0-9]+", text.lower())
-            if len(token) > 2
+            if len(token) > 2 and token not in LocalKnowledgeBase.STOPWORDS
         }
 
     def search(self, query: str, limit: int = 3) -> list[KnowledgeHit]:
