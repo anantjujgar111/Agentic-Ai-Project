@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import logging
+
 from app.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class VertexTextClient:
@@ -28,7 +33,8 @@ class VertexTextClient:
                     location=settings.gcp_location,
                 )
                 self._model = GenerativeModel(settings.vertex_model)
-            except Exception:
+            except Exception as exc:
+                logger.warning("Vertex AI initialization failed; using deterministic responses: %s", exc)
                 self.enabled = False
                 self._model = None
 
@@ -47,5 +53,9 @@ If the draft contains a disclaimer, keep it.
 Draft:
 {draft}
 """
-        response = self._model.generate_content(prompt)
-        return getattr(response, "text", None) or draft
+        try:
+            response = self._model.generate_content(prompt)
+            return getattr(response, "text", None) or draft
+        except Exception as exc:
+            logger.warning("Vertex AI response polishing failed; returning draft: %s", exc)
+            return draft
