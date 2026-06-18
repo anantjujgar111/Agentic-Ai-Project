@@ -133,6 +133,41 @@ Hosting URL: https://project-687fc909-6531-45c6-950.web.app
 
 Open that URL in the browser. You should see the chatbot UI.
 
+## Firebase fallback: deploy frontend on Cloud Run
+
+If Firebase returns this error while creating the hosting site:
+
+```text
+HTTP Error: 403, The caller does not have permission
+```
+
+use Cloud Run for the frontend website. This still gives a public HTTPS URL and stays inside GCP.
+
+Run:
+
+```bash
+cd ~/Agentic-Ai-Project/Agentic-Ai-Project
+git checkout cursor/agentic-banking-poc-88e6
+git pull origin cursor/agentic-banking-poc-88e6
+
+export GCP_PROJECT_ID=project-687fc909-6531-45c6-950
+export GCP_REGION=us-central1
+
+bash scripts/deploy_frontend_cloud_run.sh "$GCP_PROJECT_ID"
+```
+
+Expected result:
+
+```text
+Service URL: https://hdfc-banking-chatbot-33622648493.us-central1.run.app
+```
+
+Open the service URL in the browser. It serves the same chatbot files from:
+
+```text
+frontend/
+```
+
 ## 10. Demo prompts
 
 Try these:
