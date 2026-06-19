@@ -14,7 +14,7 @@ from app.services.session import session_manager
 
 
 logger = logging.getLogger(__name__)
-APP_BUILD = "2026-06-19-session-fallback"
+APP_BUILD = "2026-06-19-session-verification"
 
 
 class ChatApiRequest(BaseModel):
@@ -153,7 +153,7 @@ def _handle_chat(request: ChatApiRequest) -> dict:
             verified=False,
         )
 
-    user_id = session.customer_id or settings.default_customer_id
+    user_id = session.customer_id if session.is_verified else "unverified"
     result = orchestrator.handle(
         message=request.message,
         user_id=user_id,
@@ -193,15 +193,35 @@ def _extract_account_number(message: str) -> str | None:
 
 
 def _requires_verified_session(message: str) -> bool:
-    text = message.lower()
+    text = message.lower().strip()
+
+    personal_account_phrases = [
+        "my account",
+        "my balance",
+        "show my",
+        "check my",
+        "what is my",
+        "what's my",
+        "whats my",
+        "how much do i",
+        "how much money do i",
+        "do i have in my",
+    ]
+    if any(phrase in text for phrase in personal_account_phrases):
+        return True
+
     public_info_phrases = [
         "annual fee",
         "minimum balance",
-        "what is",
-        "tell me about",
+        "tell me about fd",
+        "tell me about rd",
+        "tell me about payment method",
         "charges and fees",
         "payment method",
         "fd and rd",
+        "debit card annual fee",
+        "what is debit card",
+        "savings account faq",
     ]
     if any(phrase in text for phrase in public_info_phrases):
         return False
@@ -210,6 +230,7 @@ def _requires_verified_session(message: str) -> bool:
         "my account",
         "my balance",
         "show balance",
+        "check balance",
         "appointment",
         "beneficiary",
         "bill",
@@ -231,5 +252,6 @@ def _requires_verified_session(message: str) -> bool:
         "save",
         "statement",
         "transaction",
+        "balance",
     ]
     return any(term in text for term in sensitive_terms)

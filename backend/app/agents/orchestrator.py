@@ -33,6 +33,14 @@ class BankingOrchestrator:
 
         intent = self._classify(message)
 
+        if user_id == "unverified" and intent in {
+            "payments",
+            "account_service",
+            "goal",
+            "rm_appointment",
+        }:
+            return self._verification_required_response(user_id)
+
         if intent == "small_talk":
             return self._small_talk(message, user_id)
         if intent == "customer_service":
@@ -555,6 +563,18 @@ class BankingOrchestrator:
         return AgentResponse(
             response=self.vertex.polish("Politely refuse unsafe or jailbreak-style requests.", draft),
             agent="Safety Guardrail",
+            user_id=user_id,
+        )
+
+    def _verification_required_response(self, user_id: str) -> AgentResponse:
+        draft = (
+            "For privacy, I need to verify your session before showing account-specific "
+            "details or creating banking requests. Please enter your full account number. "
+            "Demo accounts: 5010004321 or 5010007788."
+        )
+        return AgentResponse(
+            response=draft,
+            agent="Session Verification",
             user_id=user_id,
         )
 
