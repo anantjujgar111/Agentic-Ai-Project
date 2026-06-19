@@ -184,3 +184,40 @@ def test_session_serialization_round_trips_pending_context():
     assert restored.pending_message == "Show my balance"
     assert restored.pending_context["type"] == "transaction_issue"
     assert restored.memory[0]["content"] == "hello"
+
+
+def test_firestore_session_manager_falls_back_when_writes_fail(monkeypatch):
+    from app.services import session as session_module
+
+    class FakeSnapshot:
+        exists = False
+
+    class FakeDocument:
+        def get(self):
+            return FakeSnapshot()
+
+        def set(self, _payload):
+            raise PermissionError("missing datastore.user role")
+
+    class FakeCollection:
+        def document(self, _session_id):
+            return FakeDocument()
+
+    class FakeClient:
+        def collection(self, _name):
+            return FakeCollection()
+
+    monkeypatch.setattr(session_module.settings, "session_backend", "firestore")
+    monkeypatch.setattr(session_module.settings, "gcp_project_id", "demo-project")
+    monkeypatch.setitem(
+        session_module.__dict__,
+        "firestore",
+        type("firestore", (), {"Client": lambda **kwargs: FakeClient()}),
+    )
+
+    manager = session_module.FirestoreSessionManager("chat_sessions")
+    session = manager.get("session_a")
+    manager.remember("session_a", "user", "hello")
+
+    assert session.session_id == "session_a"
+    assert manager.get("session_a").memory[-1]["content"] == "hello"

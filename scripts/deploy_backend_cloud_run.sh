@@ -18,6 +18,17 @@ SESSION_FIRESTORE_COLLECTION_VALUE="${SESSION_FIRESTORE_COLLECTION:-chat_session
 gcloud config set project "$PROJECT_ID"
 gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com aiplatform.googleapis.com firestore.googleapis.com
 
+PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format="value(projectNumber)")"
+RUNTIME_SA="${RUNTIME_SERVICE_ACCOUNT:-${PROJECT_NUMBER}-compute@developer.gserviceaccount.com}"
+
+if [[ "$SESSION_BACKEND_VALUE" == "firestore" ]]; then
+  echo "Granting Firestore access to Cloud Run runtime service account: ${RUNTIME_SA}"
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${RUNTIME_SA}" \
+    --role="roles/datastore.user" \
+    --condition=None >/dev/null || true
+fi
+
 gcloud run deploy "$SERVICE_NAME" \
   --source . \
   --project "$PROJECT_ID" \

@@ -45,10 +45,11 @@ async function sendMessage(message) {
     addMessage("bot", data.response);
   } catch (error) {
     pending.remove();
-    addMessage(
-      "bot",
-      `I could not reach the chatbot API at ${API_BASE_URL}. Deploy the backend to Cloud Run and set the Firebase config to that URL.`
-    );
+    const detail =
+      error instanceof Error && error.message.startsWith("API returned")
+        ? `The chatbot API responded with an error (${error.message.replace("API returned ", "")}). If you just deployed, redeploy the backend with the latest script so Firestore permissions and session fallback are applied.`
+        : `I could not reach the chatbot API at ${API_BASE_URL}. Check that the backend Cloud Run service is deployed and that frontend/config.js points to it.`;
+    addMessage("bot", detail);
   }
 }
 
