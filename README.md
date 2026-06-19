@@ -12,6 +12,7 @@ It demonstrates:
 - MCP-style controlled banking tools
 - Optional Vertex AI Gemini response polishing
 - GCP deployment path with Cloud Run, Cloud Storage, Vertex AI Search, and Firebase Hosting
+- Browser-session based account verification with memory backend options: in-memory or Firestore
 
 No real banking action happens. All customer, account, bill, and appointment data is synthetic.
 

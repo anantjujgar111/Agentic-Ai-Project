@@ -54,7 +54,7 @@ verify_account_number tool checks mock account data
 
 ## Memory management
 
-The POC keeps short in-memory session memory:
+The session store keeps short session memory:
 
 - verified customer id
 - masked account number
@@ -68,7 +68,70 @@ This is implemented in:
 backend/app/services/session.py
 ```
 
-For production, replace this with Redis, Firestore, Cloud SQL, or another durable store with TTL, encryption, audit logs, and session expiry.
+The code supports two backends:
+
+```text
+SESSION_BACKEND=memory     -> local/in-memory POC default
+SESSION_BACKEND=firestore  -> GCP Firestore-backed session store
+```
+
+Firestore collection:
+
+```text
+SESSION_FIRESTORE_COLLECTION=chat_sessions
+```
+
+The Firestore document shape is:
+
+```json
+{
+  "session_id": "browser-session-id",
+  "customer_id": "cust_001",
+  "customer_name": "Aarav Mehta",
+  "account_number_masked": "XXXXXX4321",
+  "verified_at": "2026-06-19T12:00:00+00:00",
+  "pending_message": "Show my balance",
+  "pending_context": {
+    "type": "transaction_issue",
+    "initial_message": "my transaction failed"
+  },
+  "memory": [
+    {
+      "role": "user",
+      "content": "Show my balance",
+      "created_at": "2026-06-19T12:00:00+00:00"
+    }
+  ]
+}
+```
+
+For a real production system, add TTL expiry, encryption policy, audit logging, logout/session reset, and PII retention controls.
+
+## Firestore setup for persistent session memory
+
+Enable the API:
+
+```bash
+gcloud services enable firestore.googleapis.com
+```
+
+Create a Firestore database if your project does not already have one:
+
+```bash
+gcloud firestore databases create \
+  --database="(default)" \
+  --location=us-central1
+```
+
+Deploy backend with Firestore sessions:
+
+```bash
+export SESSION_BACKEND=firestore
+export SESSION_FIRESTORE_COLLECTION=chat_sessions
+bash scripts/deploy_backend_cloud_run.sh "$GCP_PROJECT_ID"
+```
+
+If Firestore is not available, the app logs a warning and falls back to in-memory sessions so the POC remains usable.
 
 ## Transaction issue memory
 
@@ -93,8 +156,8 @@ Knowledge-base indexing is not per user session. It is global/shared because pol
 Session memory is separate from knowledge indexing:
 
 ```text
-Session memory -> customer-specific chat state
-Knowledge index -> approved banking documents and FAQs
+Session memory -> customer-specific chat state in memory or Firestore
+Knowledge index -> approved banking documents and FAQs in Vertex AI Search
 ```
 
 In production:

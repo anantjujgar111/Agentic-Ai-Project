@@ -24,6 +24,10 @@ class Settings:
 
     knowledge_backend: str = os.getenv("KNOWLEDGE_BACKEND", "local")
     vertex_search_data_store_id: str | None = os.getenv("VERTEX_SEARCH_DATA_STORE_ID")
+    session_backend: str = os.getenv("SESSION_BACKEND", "memory")
+    session_firestore_collection: str = os.getenv(
+        "SESSION_FIRESTORE_COLLECTION", "chat_sessions"
+    )
 
     cors_origins: list[str] = [
         origin.strip()

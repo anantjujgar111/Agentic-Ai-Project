@@ -1,6 +1,6 @@
 from app.agents.orchestrator import BankingOrchestrator
 from app.mcp.tools import tool_service
-from app.services.session import SessionManager
+from app.services.session import ChatSession, SessionManager
 
 
 def test_balance_query_routes_to_account_agent():
@@ -164,3 +164,23 @@ def test_session_manager_keeps_customer_sessions_isolated():
 
     assert manager.get("session_1").customer_id == "cust_001"
     assert manager.get("session_2").customer_id == "cust_002"
+
+
+def test_session_serialization_round_trips_pending_context():
+    session = ChatSession(
+        session_id="session_1",
+        customer_id="cust_001",
+        customer_name="Aarav Mehta",
+        account_number_masked="XXXXXX4321",
+        pending_message="Show my balance",
+        pending_context={"type": "transaction_issue", "initial_message": "my transaction failed"},
+        memory=[{"role": "user", "content": "hello"}],
+    )
+
+    restored = ChatSession.from_dict(session.to_dict())
+
+    assert restored.session_id == "session_1"
+    assert restored.customer_id == "cust_001"
+    assert restored.pending_message == "Show my balance"
+    assert restored.pending_context["type"] == "transaction_issue"
+    assert restored.memory[0]["content"] == "hello"

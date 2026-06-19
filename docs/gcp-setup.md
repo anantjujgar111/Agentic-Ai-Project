@@ -30,7 +30,8 @@ gcloud services enable \
   run.googleapis.com \
   artifactregistry.googleapis.com \
   cloudbuild.googleapis.com \
-  storage.googleapis.com
+  storage.googleapis.com \
+  firestore.googleapis.com
 ```
 
 For knowledge indexing:
@@ -98,6 +99,17 @@ Indexing is complete when the data store shows successful import and searchable 
 ```bash
 export GCP_REGION=us-central1
 export USE_VERTEX=false
+export SESSION_BACKEND=memory
+bash scripts/deploy_backend_cloud_run.sh "$GCP_PROJECT_ID"
+```
+
+For persistent GCP-backed session memory, create Firestore and deploy with:
+
+```bash
+gcloud firestore databases create --database="(default)" --location=us-central1
+
+export SESSION_BACKEND=firestore
+export SESSION_FIRESTORE_COLLECTION=chat_sessions
 bash scripts/deploy_backend_cloud_run.sh "$GCP_PROJECT_ID"
 ```
 

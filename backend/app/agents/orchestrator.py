@@ -6,6 +6,7 @@ from typing import Any
 from app.mcp.tools import tool_service
 from app.models import AgentResponse, ToolTrace
 from app.services.knowledge import KnowledgeService
+from app.services.session import session_manager
 from app.services.vertex_client import VertexTextClient
 
 
@@ -25,10 +26,10 @@ class BankingOrchestrator:
             return self._complete_pending_verification(message, user_id, conversation_key)
 
         if (
-            conversation_key in self.pending_transaction_issues
+            self._has_pending_transaction_issue(conversation_key, session_id)
             and self._looks_like_transaction_followup(message)
         ):
-            return self._transaction_problem_followup(message, user_id, conversation_key)
+            return self._transaction_problem_followup(message, user_id, conversation_key, session_id)
 
         intent = self._classify(message)
 
@@ -39,7 +40,7 @@ class BankingOrchestrator:
         if intent == "payments":
             return self._payments(message, user_id)
         if intent == "account_service":
-            return self._account_service(message, user_id, conversation_key)
+            return self._account_service(message, user_id, conversation_key, session_id)
         if intent == "goal":
             return self._goal(message, user_id)
         if intent == "rm_appointment":
@@ -317,12 +318,14 @@ class BankingOrchestrator:
             next_steps=["For real banking, add stronger authentication, risk checks, and maker-checker confirmation."],
         )
 
-    def _account_service(self, message: str, user_id: str, conversation_key: str) -> AgentResponse:
+    def _account_service(
+        self, message: str, user_id: str, conversation_key: str, session_id: str | None = None
+    ) -> AgentResponse:
         text = message.lower()
         traces: list[ToolTrace] = []
 
         if self._is_transaction_problem(message):
-            return self._transaction_problem_help(message, user_id, conversation_key)
+            return self._transaction_problem_help(message, user_id, conversation_key, session_id)
 
         if "balance" in text:
             balance = tool_service.get_balance(user_id)
@@ -386,8 +389,10 @@ class BankingOrchestrator:
             traces=traces,
         )
 
-    def _transaction_problem_help(self, message: str, user_id: str, conversation_key: str) -> AgentResponse:
-        self.pending_transaction_issues[conversation_key] = {"initial_message": message}
+    def _transaction_problem_help(
+        self, message: str, user_id: str, conversation_key: str, session_id: str | None
+    ) -> AgentResponse:
+        self._set_pending_transaction_issue(conversation_key, message, session_id)
         draft = (
             "I can help you check a failed or pending transaction. Please share the "
             "transaction date, amount, merchant or beneficiary, and payment mode if you have it. "
@@ -402,7 +407,7 @@ class BankingOrchestrator:
         )
 
     def _transaction_problem_followup(
-        self, message: str, user_id: str, conversation_key: str
+        self, message: str, user_id: str, conversation_key: str, session_id: str | None
     ) -> AgentResponse:
         details = self._extract_transaction_support_details(message)
         missing = []
@@ -420,7 +425,7 @@ class BankingOrchestrator:
                 "transaction until those details are available."
             )
         else:
-            self.pending_transaction_issues.pop(conversation_key, None)
+            self._clear_pending_transaction_issue(conversation_key, session_id)
             draft = (
                 "Thanks, I have enough details to create a mock failed-transaction support check. "
                 "For this POC, no real bank dispute is filed. In production, this would call a "
@@ -431,6 +436,32 @@ class BankingOrchestrator:
             agent="Account Service Agent",
             user_id=user_id,
         )
+
+    def _has_pending_transaction_issue(self, conversation_key: str, session_id: str | None) -> bool:
+        if session_id:
+            return session_manager.get(session_id).pending_context.get("type") == "transaction_issue"
+        return conversation_key in self.pending_transaction_issues
+
+    def _set_pending_transaction_issue(
+        self, conversation_key: str, initial_message: str, session_id: str | None
+    ) -> None:
+        if session_id:
+            session = session_manager.get(session_id)
+            session.pending_context = {
+                "type": "transaction_issue",
+                "initial_message": initial_message,
+            }
+            session_manager.save(session)
+            return
+        self.pending_transaction_issues[conversation_key] = {"initial_message": initial_message}
+
+    def _clear_pending_transaction_issue(self, conversation_key: str, session_id: str | None) -> None:
+        if session_id:
+            session = session_manager.get(session_id)
+            session.pending_context = {}
+            session_manager.save(session)
+            return
+        self.pending_transaction_issues.pop(conversation_key, None)
 
     def _goal(self, message: str, user_id: str) -> AgentResponse:
         amount = self._extract_amount(message) or 500000
