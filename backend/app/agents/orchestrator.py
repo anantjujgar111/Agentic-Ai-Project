@@ -56,6 +56,11 @@ class BankingOrchestrator:
             phrase in normalized
             for phrase in [
                 "who are you",
+                "what is your name",
+                "what is ur name",
+                "whats your name",
+                "your name",
+                "ur name",
                 "what can you do",
                 "how can you help",
             ]
@@ -304,6 +309,9 @@ class BankingOrchestrator:
         text = message.lower()
         traces: list[ToolTrace] = []
 
+        if self._is_transaction_problem(message):
+            return self._transaction_problem_help(message, user_id)
+
         if "balance" in text:
             balance = tool_service.get_balance(user_id)
             traces.append(ToolTrace("get_account_balance", {"user_id": user_id}, balance))
@@ -364,6 +372,20 @@ class BankingOrchestrator:
             agent="Account Service Agent",
             user_id=user_id,
             traces=traces,
+        )
+
+    def _transaction_problem_help(self, message: str, user_id: str) -> AgentResponse:
+        draft = (
+            "I can help you check a failed or pending transaction. Please share the "
+            "transaction date, amount, merchant or beneficiary, and payment mode if you have it. "
+            "If money was debited but the payment failed, banks usually mark it as pending first "
+            "and then either confirm it or reverse it after reconciliation. For this POC I can guide "
+            "the next step, but I will not assume which transaction failed without those details."
+        )
+        return AgentResponse(
+            response=self.vertex.polish("Guide failed transaction support without inventing transaction details.", draft),
+            agent="Account Service Agent",
+            user_id=user_id,
         )
 
     def _goal(self, message: str, user_id: str) -> AgentResponse:
@@ -429,6 +451,12 @@ class BankingOrchestrator:
         text = message.lower()
         if "thank" in text or "thanks" in text:
             draft = "You're welcome. Tell me whenever you want help with your account, payments, goals, cards, or RM appointment."
+        elif "name" in text:
+            draft = (
+                "I am your Smart Banking Assistant for this POC. You can ask me about "
+                "account details, payments, transaction issues, savings goals, card controls, "
+                "or RM appointments, and I will route the request in the background."
+            )
         else:
             draft = (
                 "Hi, I am your Smart Banking Assistant. Tell me what you want to do, "
@@ -475,6 +503,26 @@ class BankingOrchestrator:
         text = message.lower()
         return any(term in text for term in ["change", "update", "edit", "replace"]) and any(
             item in text for item in ["phone", "mobile", "email", "address", "profile", "kyc"]
+        )
+
+    @staticmethod
+    def _is_transaction_problem(message: str) -> bool:
+        text = message.lower()
+        return any(term in text for term in ["transaction", "payment", "upi", "imps", "neft", "rtgs"]) and any(
+            issue in text
+            for issue in [
+                "failed",
+                "failure",
+                "declined",
+                "pending",
+                "stuck",
+                "not credited",
+                "not received",
+                "deducted",
+                "debited",
+                "reversal",
+                "refund",
+            ]
         )
 
     @staticmethod

@@ -41,6 +41,15 @@ def test_greeting_gets_conversational_response():
     assert "knowledge" not in result.response.lower()
 
 
+def test_name_question_gets_direct_identity_response():
+    result = BankingOrchestrator().handle("what is ur name", "cust_001")
+
+    assert result.agent == "Orchestrator Agent"
+    assert "Smart Banking Assistant" in result.response
+    assert "account questions" not in result.response
+    assert "knowledge" not in result.response.lower()
+
+
 def test_unclear_query_uses_helpful_banking_fallback():
     result = BankingOrchestrator().handle("can you help me with something", "cust_001")
 
@@ -105,3 +114,13 @@ def test_help_me_payment_query_routes_to_payment_agent():
 
     assert result.agent == "Smart Payments Agent"
     assert any(trace.name == "recommend_payment_rail" for trace in result.traces)
+
+
+def test_failed_transaction_does_not_invent_last_transaction():
+    result = BankingOrchestrator().handle("my transaction failed", "cust_001")
+
+    assert result.agent == "Account Service Agent"
+    assert "transaction date" in result.response
+    assert "amount" in result.response
+    assert "Card Annual Fee" not in result.response
+    assert not result.traces

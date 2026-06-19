@@ -105,13 +105,6 @@ h1 {
   color: white;
 }
 
-.agent-label {
-  display: block;
-  color: var(--muted);
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-
 .chat-form {
   display: grid;
   grid-template-columns: 1fr auto;

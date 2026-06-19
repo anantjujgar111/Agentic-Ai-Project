@@ -7,15 +7,9 @@ const API_BASE_URL =
   new URLSearchParams(window.location.search).get("api") ||
   "http://localhost:8080";
 
-function addMessage(role, text, agent) {
+function addMessage(role, text) {
   const bubble = document.createElement("article");
   bubble.className = `message ${role}`;
-  if (agent) {
-    const label = document.createElement("span");
-    label.className = "agent-label";
-    label.textContent = agent;
-    bubble.appendChild(label);
-  }
   bubble.append(document.createTextNode(text));
   messagesEl.appendChild(bubble);
   messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -39,7 +33,7 @@ async function sendMessage(message) {
 
     const data = await response.json();
     pending.remove();
-    addMessage("bot", data.response, data.agent);
+    addMessage("bot", data.response);
   } catch (error) {
     pending.remove();
     addMessage(
@@ -59,6 +53,5 @@ form.addEventListener("submit", (event) => {
 
 addMessage(
   "bot",
-  "Hi Aarav, I am your Smart Banking Assistant. You can type naturally, and I will handle the right banking flow in the background.",
-  "Orchestrator Agent"
+  "Hi Aarav, I am your Smart Banking Assistant. You can type naturally, and I will handle the right banking flow in the background."
 );
