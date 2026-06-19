@@ -37,3 +37,8 @@ gcloud run deploy "$SERVICE_NAME" \
   --set-env-vars "GCP_PROJECT_ID=${PROJECT_ID},GCP_LOCATION=${REGION},USE_VERTEX=${USE_VERTEX_VALUE},VERTEX_MODEL=${VERTEX_MODEL_VALUE},SESSION_BACKEND=${SESSION_BACKEND_VALUE},SESSION_FIRESTORE_COLLECTION=${SESSION_FIRESTORE_COLLECTION_VALUE}"
 
 echo "Backend deployed. Copy the Cloud Run service URL into frontend/config.js."
+echo "Verify backend with:"
+echo "  curl \${SERVICE_URL}/health"
+echo "  curl -X POST \${SERVICE_URL}/chat -H 'Content-Type: application/json' -d '{\"session_id\":\"demo\",\"message\":\"hi\"}'"
+echo ""
+echo "If /health does not include build=2026-06-19-session-fallback, pull latest code and redeploy backend."

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 
 from fastapi import FastAPI
@@ -10,6 +11,10 @@ from app.agents.orchestrator import BankingOrchestrator
 from app.config import settings
 from app.mcp.tools import tool_service
 from app.services.session import session_manager
+
+
+logger = logging.getLogger(__name__)
+APP_BUILD = "2026-06-19-session-fallback"
 
 
 class ChatApiRequest(BaseModel):
@@ -40,12 +45,45 @@ app.add_middleware(
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": settings.app_name}
+def health() -> dict[str, object]:
+    session_store_ok = True
+    try:
+        probe = session_manager.get("_healthcheck")
+        session_manager.save(probe)
+    except Exception as exc:
+        logger.warning("Session store health check failed: %s", exc)
+        session_store_ok = False
+
+    return {
+        "status": "ok" if session_store_ok else "degraded",
+        "service": settings.app_name,
+        "build": APP_BUILD,
+        "session_backend": settings.session_backend,
+        "session_store_ok": session_store_ok,
+        "use_vertex": settings.use_vertex,
+    }
 
 
 @app.post("/chat", response_model=ChatApiResponse)
 def chat(request: ChatApiRequest) -> dict:
+    try:
+        return _handle_chat(request)
+    except Exception as exc:
+        logger.exception("Chat request failed for session_id=%s", request.session_id)
+        return _session_response(
+            response=(
+                "Something went wrong while handling your message in the backend POC. "
+                "Redeploy the backend API with the latest code from the repo, then try again. "
+                f"Technical detail: {exc.__class__.__name__}"
+            ),
+            agent="System",
+            session_id=request.session_id,
+            user_id="unverified",
+            verified=False,
+        )
+
+
+def _handle_chat(request: ChatApiRequest) -> dict:
     session = session_manager.get(request.session_id)
     session_manager.remember(request.session_id, "user", request.message)
 
