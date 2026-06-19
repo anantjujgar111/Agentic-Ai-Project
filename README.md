@@ -36,6 +36,7 @@ docs/                 # Step-by-step lifecycle and GCP setup
 
 1. [Lifecycle guide](docs/lifecycle-guide.md)
 2. [GCP setup checklist](docs/gcp-setup.md)
+3. [Session and memory POC guide](docs/session-and-memory-poc.md)
 
 ## Backend API
 

@@ -19,6 +19,20 @@ class BankingToolService:
     def get_customer(self, user_id: str) -> dict[str, Any]:
         return self._find_one("customers", "customer_id", user_id)
 
+    def verify_account_number(self, account_number: str) -> dict[str, Any]:
+        normalized = "".join(ch for ch in account_number if ch.isdigit())
+        for account in self.data["accounts"]:
+            if normalized == account["account_number"]:
+                customer = self.get_customer(account["customer_id"])
+                return {
+                    "verified": True,
+                    "customer_id": account["customer_id"],
+                    "customer_name": customer["name"],
+                    "account_number_masked": account["account_number_masked"],
+                    "account_type": account["account_type"],
+                }
+        return {"verified": False}
+
     def get_balance(self, user_id: str) -> dict[str, Any]:
         account = self._find_one("accounts", "customer_id", user_id)
         return {

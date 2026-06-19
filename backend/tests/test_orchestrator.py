@@ -1,4 +1,6 @@
 from app.agents.orchestrator import BankingOrchestrator
+from app.mcp.tools import tool_service
+from app.services.session import SessionManager
 
 
 def test_balance_query_routes_to_account_agent():
@@ -124,3 +126,41 @@ def test_failed_transaction_does_not_invent_last_transaction():
     assert "amount" in result.response
     assert "Card Annual Fee" not in result.response
     assert not result.traces
+
+
+def test_failed_transaction_followup_uses_same_session_memory():
+    orchestrator = BankingOrchestrator()
+    first = orchestrator.handle("my transaction failed", "cust_001", session_id="session_a")
+    second = orchestrator.handle("my last payment amount 300 rs", "cust_001", session_id="session_a")
+
+    assert first.agent == "Account Service Agent"
+    assert second.agent == "Account Service Agent"
+    assert "please also share" in second.response.lower()
+    assert "Mumbai Electric Supply" not in second.response
+    assert not second.traces
+
+
+def test_transaction_memory_does_not_cross_sessions():
+    orchestrator = BankingOrchestrator()
+    orchestrator.handle("my transaction failed", "cust_001", session_id="session_a")
+    result = orchestrator.handle("my last payment amount 300 rs", "cust_001", session_id="session_b")
+
+    assert result.agent != "Smart Payments Agent"
+    assert "Mumbai Electric Supply" not in result.response
+
+
+def test_account_number_verification_maps_to_correct_customer():
+    result = tool_service.verify_account_number("5010007788")
+
+    assert result["verified"] is True
+    assert result["customer_id"] == "cust_002"
+    assert result["account_number_masked"] == "XXXXXX7788"
+
+
+def test_session_manager_keeps_customer_sessions_isolated():
+    manager = SessionManager()
+    manager.mark_verified("session_1", "cust_001", "Aarav Mehta", "XXXXXX4321")
+    manager.mark_verified("session_2", "cust_002", "Neha Rao", "XXXXXX7788")
+
+    assert manager.get("session_1").customer_id == "cust_001"
+    assert manager.get("session_2").customer_id == "cust_002"

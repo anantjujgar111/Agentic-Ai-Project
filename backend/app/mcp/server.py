@@ -33,6 +33,10 @@ def build_mcp_server():
         return tool_service.get_balance(user_id)
 
     @mcp.tool()
+    def verify_account_number(account_number: str) -> dict:
+        return tool_service.verify_account_number(account_number)
+
+    @mcp.tool()
     def verify_dob(user_id: str, dob: str) -> dict:
         return tool_service.verify_dob(user_id=user_id, dob=dob)
 

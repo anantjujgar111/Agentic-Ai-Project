@@ -14,24 +14,32 @@ class BankingOrchestrator:
         self.knowledge = KnowledgeService()
         self.vertex = VertexTextClient()
         self.pending_verifications: dict[str, dict[str, str | None]] = {}
+        self.pending_transaction_issues: dict[str, dict[str, str]] = {}
 
-    def handle(self, message: str, user_id: str) -> AgentResponse:
+    def handle(self, message: str, user_id: str, session_id: str | None = None) -> AgentResponse:
+        conversation_key = session_id or user_id
         if self._is_unsafe_request(message):
             return self._safety_response(user_id)
 
-        if user_id in self.pending_verifications and self._extract_dob(message):
-            return self._complete_pending_verification(message, user_id)
+        if conversation_key in self.pending_verifications and self._extract_dob(message):
+            return self._complete_pending_verification(message, user_id, conversation_key)
+
+        if (
+            conversation_key in self.pending_transaction_issues
+            and self._looks_like_transaction_followup(message)
+        ):
+            return self._transaction_problem_followup(message, user_id, conversation_key)
 
         intent = self._classify(message)
 
         if intent == "small_talk":
             return self._small_talk(message, user_id)
         if intent == "customer_service":
-            return self._customer_service(message, user_id)
+            return self._customer_service(message, user_id, conversation_key)
         if intent == "payments":
             return self._payments(message, user_id)
         if intent == "account_service":
-            return self._account_service(message, user_id)
+            return self._account_service(message, user_id, conversation_key)
         if intent == "goal":
             return self._goal(message, user_id)
         if intent == "rm_appointment":
@@ -72,6 +80,8 @@ class BankingOrchestrator:
             return "rm_appointment"
         if any(term in text for term in ["goal", "save", "saving", "vacation", "wedding", "education", "retirement", "emergency fund", "down payment"]):
             return "goal"
+        if any(term in text for term in ["last payment", "payment amount", "payment status", "payment failed", "payment pending"]):
+            return "account_service"
         if any(term in text for term in ["pay", "bill", "split", "rent", "recurring", "due date", "upi", "imps", "neft", "rtgs"]):
             return "payments"
         if any(term in text for term in ["annual fee", "fees", "fee", "charges and fees", "schedule of charges"]):
@@ -80,9 +90,9 @@ class BankingOrchestrator:
             return "account_service"
         return "customer_service"
 
-    def _customer_service(self, message: str, user_id: str) -> AgentResponse:
+    def _customer_service(self, message: str, user_id: str, conversation_key: str) -> AgentResponse:
         if self._is_profile_update_request(message):
-            return self._profile_update_help(message, user_id)
+            return self._profile_update_help(message, user_id, conversation_key)
 
         search_result = self.knowledge.search(message)
         traces = [
@@ -115,7 +125,7 @@ class BankingOrchestrator:
             traces=traces,
         )
 
-    def _profile_update_help(self, message: str, user_id: str) -> AgentResponse:
+    def _profile_update_help(self, message: str, user_id: str, conversation_key: str) -> AgentResponse:
         update_type = self._extract_profile_update_type(message)
         new_value = self._extract_profile_update_value(message, update_type)
         dob = self._extract_dob(message)
@@ -128,7 +138,7 @@ class BankingOrchestrator:
                 new_value=new_value,
             )
 
-        self.pending_verifications[user_id] = {
+        self.pending_verifications[conversation_key] = {
             "action": "profile_update",
             "update_type": update_type,
             "new_value": new_value,
@@ -145,8 +155,10 @@ class BankingOrchestrator:
             user_id=user_id,
         )
 
-    def _complete_pending_verification(self, message: str, user_id: str) -> AgentResponse:
-        pending = self.pending_verifications.get(user_id, {})
+    def _complete_pending_verification(
+        self, message: str, user_id: str, conversation_key: str
+    ) -> AgentResponse:
+        pending = self.pending_verifications.get(conversation_key, {})
         dob = self._extract_dob(message)
         if not dob:
             return self._fallback(message, user_id)
@@ -159,10 +171,10 @@ class BankingOrchestrator:
                 new_value=pending.get("new_value"),
             )
             if any(trace.name == "verify_dob" and trace.output.get("verified") for trace in result.traces):
-                self.pending_verifications.pop(user_id, None)
+                self.pending_verifications.pop(conversation_key, None)
             return result
 
-        self.pending_verifications.pop(user_id, None)
+        self.pending_verifications.pop(conversation_key, None)
         return self._fallback(message, user_id)
 
     def _verify_and_create_profile_update(
@@ -305,12 +317,12 @@ class BankingOrchestrator:
             next_steps=["For real banking, add stronger authentication, risk checks, and maker-checker confirmation."],
         )
 
-    def _account_service(self, message: str, user_id: str) -> AgentResponse:
+    def _account_service(self, message: str, user_id: str, conversation_key: str) -> AgentResponse:
         text = message.lower()
         traces: list[ToolTrace] = []
 
         if self._is_transaction_problem(message):
-            return self._transaction_problem_help(message, user_id)
+            return self._transaction_problem_help(message, user_id, conversation_key)
 
         if "balance" in text:
             balance = tool_service.get_balance(user_id)
@@ -374,7 +386,8 @@ class BankingOrchestrator:
             traces=traces,
         )
 
-    def _transaction_problem_help(self, message: str, user_id: str) -> AgentResponse:
+    def _transaction_problem_help(self, message: str, user_id: str, conversation_key: str) -> AgentResponse:
+        self.pending_transaction_issues[conversation_key] = {"initial_message": message}
         draft = (
             "I can help you check a failed or pending transaction. Please share the "
             "transaction date, amount, merchant or beneficiary, and payment mode if you have it. "
@@ -384,6 +397,37 @@ class BankingOrchestrator:
         )
         return AgentResponse(
             response=self.vertex.polish("Guide failed transaction support without inventing transaction details.", draft),
+            agent="Account Service Agent",
+            user_id=user_id,
+        )
+
+    def _transaction_problem_followup(
+        self, message: str, user_id: str, conversation_key: str
+    ) -> AgentResponse:
+        details = self._extract_transaction_support_details(message)
+        missing = []
+        if not details.get("amount"):
+            missing.append("amount")
+        if not details.get("date"):
+            missing.append("date")
+        if not details.get("merchant_or_beneficiary"):
+            missing.append("merchant or beneficiary")
+
+        if missing:
+            draft = (
+                "Thanks, I noted the transaction detail you shared. To check this properly, "
+                f"please also share: {', '.join(missing)}. I will not assume the failed "
+                "transaction until those details are available."
+            )
+        else:
+            self.pending_transaction_issues.pop(conversation_key, None)
+            draft = (
+                "Thanks, I have enough details to create a mock failed-transaction support check. "
+                "For this POC, no real bank dispute is filed. In production, this would call a "
+                "transaction-status or dispute tool and return a reference number."
+            )
+        return AgentResponse(
+            response=self.vertex.polish("Handle failed transaction follow-up details.", draft),
             agent="Account Service Agent",
             user_id=user_id,
         )
@@ -524,6 +568,35 @@ class BankingOrchestrator:
                 "refund",
             ]
         )
+
+    @staticmethod
+    def _looks_like_transaction_followup(message: str) -> bool:
+        text = message.lower()
+        return bool(
+            re.search(r"\b\d+(?:\.\d+)?\s*(rs|inr|rupees?)?\b", text)
+            or re.search(r"\b\d{4}[-/]\d{2}[-/]\d{2}\b", text)
+            or re.search(r"\b\d{2}[-/]\d{2}[-/]\d{4}\b", text)
+            or any(term in text for term in ["merchant", "beneficiary", "paid to", "sent to"])
+        )
+
+    @staticmethod
+    def _extract_transaction_support_details(message: str) -> dict[str, str | None]:
+        text = message.lower()
+        amount_match = re.search(r"(?:rs\.?|inr)?\s*(\d+(?:\.\d+)?)\s*(?:rs|inr|rupees?)?", text)
+        date_match = re.search(
+            r"\b(?:\d{4}[-/]\d{2}[-/]\d{2}|\d{2}[-/]\d{2}[-/]\d{4})\b",
+            message,
+        )
+        merchant_match = re.search(
+            r"(?:merchant|beneficiary|paid to|sent to)\s+([a-zA-Z0-9 ._-]{3,})",
+            message,
+            re.IGNORECASE,
+        )
+        return {
+            "amount": amount_match.group(1) if amount_match else None,
+            "date": date_match.group(0) if date_match else None,
+            "merchant_or_beneficiary": merchant_match.group(1).strip() if merchant_match else None,
+        }
 
     @staticmethod
     def _extract_profile_update_type(message: str) -> str:

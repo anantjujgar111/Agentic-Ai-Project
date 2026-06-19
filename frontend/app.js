@@ -7,6 +7,15 @@ const API_BASE_URL =
   new URLSearchParams(window.location.search).get("api") ||
   "http://localhost:8080";
 
+const SESSION_STORAGE_KEY = "banking-chat-session-id";
+let sessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+if (!sessionId) {
+  sessionId = crypto.randomUUID
+    ? crypto.randomUUID()
+    : `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+}
+
 function addMessage(role, text) {
   const bubble = document.createElement("article");
   bubble.className = `message ${role}`;
@@ -24,7 +33,7 @@ async function sendMessage(message) {
     const response = await fetch(`${API_BASE_URL}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: "cust_001", message }),
+      body: JSON.stringify({ session_id: sessionId, message }),
     });
 
     if (!response.ok) {
@@ -53,5 +62,5 @@ form.addEventListener("submit", (event) => {
 
 addMessage(
   "bot",
-  "Hi Aarav, I am your Smart Banking Assistant. You can type naturally, and I will handle the right banking flow in the background."
+  "Hi, I am your Smart Banking Assistant. You can type naturally. For account-specific help, I will verify your session with your account number first."
 );

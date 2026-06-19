@@ -182,6 +182,22 @@ What is debit card annual fee?
 I have to change my phone no
 ```
 
+For account-specific prompts, the assistant asks for an account number first. Use one of these synthetic accounts:
+
+```text
+5010004321 -> Aarav Mehta / XXXXXX4321
+5010007788 -> Neha Rao / XXXXXX7788
+```
+
+Example:
+
+```text
+User: Show my balance
+Bot: Please enter your full account number
+User: 5010007788
+Bot: Verifies session and shows Neha's mock balance
+```
+
 For the mock profile-update flow, the assistant asks for DOB verification. Use this synthetic DOB for `cust_001`:
 
 ```text

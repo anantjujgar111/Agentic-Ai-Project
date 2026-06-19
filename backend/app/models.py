@@ -22,11 +22,13 @@ class AgentResponse:
     response: str
     agent: str
     user_id: str
+    session_id: str | None = None
+    session_verified: bool | None = None
     traces: list[ToolTrace] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "response": self.response,
             "agent": self.agent,
             "user_id": self.user_id,
@@ -36,3 +38,8 @@ class AgentResponse:
             ],
             "next_steps": self.next_steps,
         }
+        if self.session_id is not None:
+            payload["session_id"] = self.session_id
+        if self.session_verified is not None:
+            payload["session_verified"] = self.session_verified
+        return payload
