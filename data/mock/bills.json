@@ -1,0 +1,32 @@
+[
+  {
+    "bill_id": "bill_001",
+    "customer_id": "cust_001",
+    "biller": "Mumbai Electric Supply",
+    "category": "electricity",
+    "amount": 2340,
+    "due_date": "2026-06-22",
+    "recommended_pay_date": "2026-06-20",
+    "status": "due"
+  },
+  {
+    "bill_id": "bill_002",
+    "customer_id": "cust_001",
+    "biller": "HDFC Credit Card",
+    "category": "credit card",
+    "amount": 18450,
+    "due_date": "2026-06-25",
+    "recommended_pay_date": "2026-06-23",
+    "status": "due"
+  },
+  {
+    "bill_id": "bill_003",
+    "customer_id": "cust_001",
+    "biller": "FiberNet Broadband",
+    "category": "broadband",
+    "amount": 999,
+    "due_date": "2026-06-27",
+    "recommended_pay_date": "2026-06-25",
+    "status": "due"
+  }
+]

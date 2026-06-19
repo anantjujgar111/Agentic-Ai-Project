@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HDFC Smart Banking Assistant POC</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="chat-card">
+        <header class="chat-header">
+          <div>
+            <p class="eyebrow">Agentic AI POC</p>
+            <h1>HDFC Smart Banking Assistant</h1>
+          </div>
+          <span class="status">Mock banking mode</span>
+        </header>
+
+        <section id="messages" class="messages" aria-live="polite"></section>
+
+        <form id="chat-form" class="chat-form">
+          <input
+            id="message-input"
+            name="message"
+            placeholder="Type your message..."
+            autocomplete="off"
+            required
+          />
+          <button type="submit">Send</button>
+        </form>
+      </section>
+    </main>
+
+    <script src="./config.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
