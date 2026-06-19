@@ -73,6 +73,7 @@ def chat(request: ChatApiRequest) -> dict:
         if session.pending_message:
             pending_message = session.pending_message
             session.pending_message = None
+            session_manager.save(session)
             result = orchestrator.handle(
                 message=pending_message,
                 user_id=session.customer_id,
@@ -101,6 +102,7 @@ def chat(request: ChatApiRequest) -> dict:
 
     if not session.is_verified and _requires_verified_session(request.message):
         session.pending_message = request.message
+        session_manager.save(session)
         return _session_response(
             response=(
                 "For privacy, I need to verify your session before showing account-specific "
